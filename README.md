@@ -1,4 +1,16 @@
-# Cobweb
+<p align="center" style="font-size: 5em; margin-bottom: 0px;">🕸️</p>
+<h1 align="center" style="margin-top: 0px;">Cobweb</h1>
+
+<p align="center">
+    <strong>Swift Networking Made Better</strong><br>
+</p>
+
+<p align="center">
+    <a href="https://developer.apple.com/swift/"><img alt="Swift 6.0" src="https://img.shields.io/badge/swift-6.0-orange.svg?style=flat"></a>
+    <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-black.svg"></a>
+</p>
+
+## Overview
 Cobweb is a thin and light wrapper around Foundation.URLSession and its functionality. Cobweb is meant to provide a cleaner way to make URLRequests and work with the information received back from them.
 
 ## Quickstart Guide

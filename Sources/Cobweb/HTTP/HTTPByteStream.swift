@@ -17,7 +17,7 @@ public extension Cobweb.HTTP {
         public typealias Element = UInt8
         
         /// The asynchronous byte stream returned by the network request.
-        private(set) var bytes: URLSession.AsyncBytes
+        public private(set) var bytes: URLSession.AsyncBytes
         
         /// The network response associated with the byte stream.
         private var response: Cobweb.HTTP.Response

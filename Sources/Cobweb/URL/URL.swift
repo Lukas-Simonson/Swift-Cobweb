@@ -28,6 +28,14 @@ public extension Cobweb {
         enum URLError: Error {
             case couldntCreateURL
         }
+        
+        public typealias QueryItem = URLQueryItem
+    }
+}
+
+public extension Cobweb.URL.QueryItem {
+    static func item(key: String, value: CustomStringConvertible?) -> Self {
+        URLQueryItem(name: key, value: value?.description)
     }
 }
 
@@ -133,6 +141,17 @@ public extension Cobweb.URL {
     /// - Returns: The modified `Cobweb.URL` instance with the specified query.
     func query(_ string: String) -> Self {
         self.components.query = string
+        return self
+    }
+    
+    /// Sets the query of the URL.
+    ///
+    /// This method sets the query of the URL using the provided query items.
+    ///
+    /// - Parameter items: A collection of `Cobweb.URL.QueryItem` that represents each key value pair of the query.
+    /// - Returns: The modified `Cobweb.URL` instance with the specified query.
+    func query(_ items: Cobweb.URL.QueryItem...) -> Self {
+        self.components.queryItems = items
         return self
     }
     

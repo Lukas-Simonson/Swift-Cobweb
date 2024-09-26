@@ -14,10 +14,10 @@ public extension Cobweb.HTTP {
     /// This class encapsulates the response data and the URL response received from a network request.
     class Response {
         /// The data returned by the network request.
-        private var data: Data?
+        private(set) var data: Data?
         
         /// The URL response returned by the network request.
-        private var response: URLResponse
+        private(set) var response: URLResponse
         
         /// Cached response status code.
         private var _statusCode: Int? = nil

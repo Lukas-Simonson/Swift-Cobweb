@@ -126,6 +126,19 @@ public extension Cobweb.HTTP.Response {
     
     /// Verifies that the HTTP status code is the specified value.
     ///
+    /// This method checks if the HTTP status code is equal to the specified value. If not, it will return nil.
+    ///
+    /// - Parameters:
+    ///   - code: The HTTP status code to verify against.
+    /// - Throws: `ResponseError.invalidHTTPResponse` if the status code could not be accessed
+    @discardableResult
+    func verifyStatusCode(is code: Int) throws -> Self? {
+        if try statusCode != code { return nil }
+        return self
+    }
+    
+    /// Verifies that the HTTP status code is the specified value.
+    ///
     /// This method checks if the HTTP status code is equal to the specified value. If not, it throws the specified error.
     ///
     /// - Parameters:
@@ -151,6 +164,20 @@ public extension Cobweb.HTTP.Response {
         if try statusCode != code {
             throw try self.body(as: E.self, decoder)
         }
+        return self
+    }
+    
+    /// Verifies that the HTTP status code is in the specified range.
+    ///
+    /// This method checks if the HTTP status code is within the specified range. If not, it will return nil.
+    ///
+    /// - Parameters:
+    ///   - range: The range HTTP status codes to verify against.
+    /// - Throws: `ResponseError.invalidHTTPResponse` if the status code could not be accessed
+    @discardableResult
+    func verifyStatusCode(isIn range: ClosedRange<Int>) throws -> Self? {
+        let statusCode = try statusCode
+        if range.lowerBound > statusCode || range.upperBound < statusCode { return nil }
         return self
     }
     
@@ -188,6 +215,19 @@ public extension Cobweb.HTTP.Response {
     
     /// Verifies that the HTTP status code is not the specified value.
     ///
+    /// This method checks if the HTTP status code is not equal to the specified value. If it is, it will return nil.
+    ///
+    /// - Parameters:
+    ///   - code: The HTTP status code to verify against.
+    /// - Throws: `ResponseError.invalidHTTPResponse` if the status code could not be accessed
+    @discardableResult
+    func verifyStatusCode(isNot code: Int) throws -> Self? {
+        if try statusCode == code { return nil }
+        return self
+    }
+    
+    /// Verifies that the HTTP status code is not the specified value.
+    ///
     /// This method checks if the HTTP status code is not equal to the specified value. If it is, it throws the specified error.
     ///
     /// - Parameters:
@@ -213,6 +253,20 @@ public extension Cobweb.HTTP.Response {
         if try statusCode == code {
             throw try self.body(as: E.self, decoder)
         }
+        return self
+    }
+    
+    /// Verifies that the HTTP status code is not in the specified range.
+    ///
+    /// This method checks if the HTTP status code is not within the specified range. If it is, it will return nil.
+    ///
+    /// - Parameters:
+    ///   - range: The range HTTP status codes to verify against.
+    /// - Throws: `ResponseError.invalidHTTPResponse` if the status code could not be accessed
+    @discardableResult
+    func verifyStatusCode(isNotIn range: ClosedRange<Int>) throws -> Self? {
+        let statusCode = try statusCode
+        if range.lowerBound < statusCode && range.upperBound > statusCode { return nil }
         return self
     }
     

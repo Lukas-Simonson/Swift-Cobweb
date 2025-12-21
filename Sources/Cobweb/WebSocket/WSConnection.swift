@@ -20,6 +20,10 @@ public extension Cobweb.WebSocket {
             self.task = request.session.webSocketTask(with: request.request)
             self.task.resume()
         }
+        
+        public enum ConnectionError: Error {
+            
+        }
     }
     
     /// `Message` represents a value that is sent or received over the WebSocket connection.
@@ -43,15 +47,23 @@ public extension Cobweb.WebSocket {
         ///   - decoder: The `JSONDecoder` to use to decode the message. Defaults to `JSONDecoder()`.
         /// - Returns: The decoded value from the message.
         /// - Throws: `MessageError.expectedDataButReceivedStringResponse` if the message is not the `.data` type, or an error if the data cannot be decoded into the specified type.
-        public func decoded<D: Decodable>(as type: D.Type = D.self, using decoder: JSONDecoder = JSONDecoder()) throws -> D {
+        public func decoded<D: Decodable>(as type: D.Type = D.self, using decoder: JSONDecoder = JSONDecoder()) throws(MessageError) -> D {
             guard case .data(let data) = message
             else { throw MessageError.expectedDataButReceivedStringResponse }
             
-            return try JSONDecoder().decode(D.self, from: data)
+            do {
+                return try JSONDecoder().decode(D.self, from: data)
+            } catch let error as DecodingError {
+                throw MessageError.decoding(error)
+            } catch {
+                throw MessageError.unexpected(error)
+            }
         }
         
-        enum MessageError: Error {
+        public enum MessageError: Error {
             case expectedDataButReceivedStringResponse
+            case decoding(DecodingError)
+            case unexpected(Error)
         }
     }
 }

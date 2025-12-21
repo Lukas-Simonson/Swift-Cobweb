@@ -23,8 +23,11 @@ public extension Cobweb.HTTP {
             self.request = request
         }
         
-        enum RequestError: Error {
+        public typealias ResponseError = Cobweb.HTTP.Response.ResponseError
+        public enum RequestError: Error {
             case invalidURLString
+            case unableToEncodeBodyToJSON(EncodingError)
+            case unexpected(Error)
         }
     }
 }
@@ -41,7 +44,7 @@ public extension Cobweb.HTTP.Request {
     /// - Throws: `Cobweb.HTTP.RequestError.invalidURLString` if the string cannot be converted to a valid URL.
     ///
     /// - Note: This method is static and private, intended for internal use within the `Cobweb.HTTP.Request` class.
-    private static func validateURLString(_ str: String) throws -> URL {
+    private static func validateURLString(_ str: String) throws(RequestError) -> URL {
         guard let url = URL(string: str)
         else { throw RequestError.invalidURLString }
         return url
@@ -55,7 +58,7 @@ public extension Cobweb.HTTP.Request {
     ///   - method: The HTTP method to use for the request. This should be one of the cases from `Network.HTTP.Method`.
     ///   - urlString: The string representation of the URL for the request.
     /// - Returns: An instance initialized with a `Cobweb.HTTP.Request` configured with the specified HTTP method and URL.
-    static func method(_ method: Cobweb.HTTP.Method, _ urlString: String) throws -> Self {
+    static func method(_ method: Cobweb.HTTP.Method, _ urlString: String) throws(RequestError) -> Self {
         return try Self.method(method, validateURLString(urlString))
     }
     
@@ -80,7 +83,7 @@ public extension Cobweb.HTTP.Request {
     /// - Parameter urlString: The string representation of the URL for the GET request.
     /// - Returns: An instance initialized with a `Cobweb.HTTP.Request` configured with the GET method and the specified URL.
     /// - Throws: `Cobweb.HTTP.RequestError.invalidURLString` if the URL string is not valid.
-    static func get(_ urlString: String) throws -> Self {
+    static func get(_ urlString: String) throws(RequestError) -> Self {
         return try Self.get(validateURLString(urlString))
     }
     
@@ -101,7 +104,7 @@ public extension Cobweb.HTTP.Request {
     /// - Parameter urlString: The string representation of the URL for the POST request.
     /// - Returns: An instance initialized with a `Cobweb.HTTP.Request` configured with the POST method and the specified URL.
     /// - Throws: `Cobweb.HTTP.RequestError.invalidURLString` if the URL string is not valid.
-    static func post(_ urlString: String) throws -> Self {
+    static func post(_ urlString: String) throws(RequestError) -> Self {
         try Self.post(validateURLString(urlString))
     }
     
@@ -122,7 +125,7 @@ public extension Cobweb.HTTP.Request {
     /// - Parameter urlString: The string representation of the URL for the PUT request.
     /// - Returns: An instance initialized with a `Cobweb.HTTP.Request` configured with the PUT method and the specified URL.
     /// - Throws: `Cobweb.HTTP.RequestError.invalidURLString` if the PUT string is not valid.
-    static func put(_ urlString: String) throws -> Self {
+    static func put(_ urlString: String) throws(RequestError) -> Self {
         try Self.put(validateURLString(urlString))
     }
     
@@ -143,7 +146,7 @@ public extension Cobweb.HTTP.Request {
     /// - Parameter urlString: The string representation of the URL for the DELETE request.
     /// - Returns: An instance initialized with a `Cobweb.HTTP.Request` configured with the DELETE method and the specified URL.
     /// - Throws: `Cobweb.HTTP.RequestError.invalidURLString` if the URL string is not valid.
-    static func delete(_ urlString: String) throws -> Self {
+    static func delete(_ urlString: String) throws(RequestError) -> Self {
         try Self.delete(validateURLString(urlString))
     }
     
@@ -197,9 +200,15 @@ public extension Cobweb.HTTP.Request {
     ///   - encoder: The JSON encoder to use for encoding the object. Defaults to `JSONEncoder()`.
     /// - Returns: The modified request instance with the specified HTTP body set.
     /// - Throws: An error if the object cannot be encoded as JSON.
-    func withBody<Body: Encodable>(_ jsonEncodable: Body, encoder: JSONEncoder = JSONEncoder()) throws -> Self {
-        let data = try encoder.encode(jsonEncodable)
-        return withBody(data)
+    func withBody<Body: Encodable>(_ jsonEncodable: Body, encoder: JSONEncoder = JSONEncoder()) throws(RequestError) -> Self {
+        do {
+            let data = try encoder.encode(jsonEncodable)
+            return withBody(data)
+        } catch let error as EncodingError {
+            throw RequestError.unableToEncodeBodyToJSON(error)
+        } catch {
+            throw RequestError.unexpected(error)
+        }
     }
     
     /// Sets the HTTP body of the request with a string.
@@ -208,8 +217,7 @@ public extension Cobweb.HTTP.Request {
     ///
     /// - Parameter str: The string to set as the HTTP body of the request.
     /// - Returns: The modified request instance with the specified HTTP body set.
-    /// - Throws: An error if the string cannot be converted to data.
-    func withBody(_ str: String) throws -> Self {
+    func withBody(_ str: String) -> Self {
         return withBody(Data(str.utf8))
     }
     
@@ -234,9 +242,15 @@ public extension Cobweb.HTTP.Request {
     /// - Returns: A `Network.Response` object containing the response data and URL response.
     /// - Throws: An error if the request fails.
     @discardableResult
-    func response() async throws -> Cobweb.HTTP.Response {
-        let (data, urlResponse) = try await self.session.data(for: self.request)
-        return Cobweb.HTTP.Response(data: data, response: urlResponse)
+    func response() async throws(ResponseError) -> Cobweb.HTTP.Response {
+        do {
+            let (data, urlResponse) = try await self.session.data(for: self.request)
+            return Cobweb.HTTP.Response(data: data, response: urlResponse)
+        } catch let error as URLError {
+            throw ResponseError.urlError(error)
+        } catch {
+            throw ResponseError.unexpected(error)
+        }
     }
     
     /// Sends the request and returns a byte stream response.
@@ -247,9 +261,15 @@ public extension Cobweb.HTTP.Request {
     /// - Throws: An error if the request fails.
     /// - Availability: This method is available on iOS 15.0 and macOS 12.0 or newer.
     @available(iOS 15.0, macOS 12.0, *)
-    func responseStream() async throws -> Cobweb.HTTP.ByteStream {
-        let (bytes, urlResponse) = try await self.session.bytes(for: self.request)
-        return Cobweb.HTTP.ByteStream(bytes: bytes, response: Cobweb.HTTP.Response(data: nil, response: urlResponse))
+    func responseStream() async throws(ResponseError) -> Cobweb.HTTP.ByteStream {
+        do {
+            let (bytes, urlResponse) = try await self.session.bytes(for: self.request)
+            return Cobweb.HTTP.ByteStream(bytes: bytes, response: Cobweb.HTTP.Response(data: nil, response: urlResponse))
+        } catch let error as URLError {
+            throw ResponseError.urlError(error)
+        } catch {
+            throw ResponseError.unexpected(error)
+        }
     }
     
     /// Sends the request and returns the response body data.
@@ -258,7 +278,7 @@ public extension Cobweb.HTTP.Request {
     ///
     /// - Returns: The raw data from the response body.
     /// - Throws: An error if the request fails or the response data cannot be retrieved.
-    func responseBodyData() async throws -> Data {
+    func responseBodyData() async throws(ResponseError) -> Data {
         return try await self.response().bodyData()
     }
     
@@ -269,7 +289,7 @@ public extension Cobweb.HTTP.Request {
     /// - Parameter decoder: The JSON decoder to use for decoding the response body. Defaults to `JSONDecoder()`.
     /// - Returns: The decoded response body of the specified type.
     /// - Throws: An error if the request fails or the response body cannot be decoded.
-    func responseBody<Body: Decodable>(using decoder: JSONDecoder = JSONDecoder()) async throws -> Body {
+    func responseBody<Body: Decodable>(using decoder: JSONDecoder = JSONDecoder()) async throws(ResponseError) -> Body {
         return try await self.response().body(decoder)
     }
     
@@ -282,7 +302,7 @@ public extension Cobweb.HTTP.Request {
     ///   - decoder: The JSON decoder to use for decoding the response body. Defaults to `JSONDecoder()`.
     /// - Returns: The decoded response body of the specified type.
     /// - Throws: An error if the request fails or the response body cannot be decoded.
-    func responseBody<Body: Decodable>(as type: Body.Type, using decoder: JSONDecoder = JSONDecoder()) async throws -> Body {
+    func responseBody<Body: Decodable>(as type: Body.Type, using decoder: JSONDecoder = JSONDecoder()) async throws(ResponseError) -> Body {
         return try await self.response().body(decoder)
     }
 }

@@ -24,7 +24,7 @@ public extension Cobweb.HTTP {
         
         /// The status code of this response.
         public var statusCode: Int {
-            get throws {
+            get throws(ResponseError) {
                 if let _statusCode { return _statusCode }
                 else if let response = self.response as? HTTPURLResponse {
                     _statusCode = response.statusCode
@@ -44,10 +44,13 @@ public extension Cobweb.HTTP {
             self.response = response
         }
         
-        enum ResponseError: Error {
+        public enum ResponseError: Error {
             case invalidHTTPResponse
             case dataNotFound
             case couldntConvertData
+            case urlError(URLError)
+            case decodingError(DecodingError)
+            case unexpected(Error)
         }
     }
 }
@@ -60,7 +63,7 @@ public extension Cobweb.HTTP.Response {
     ///
     /// - Returns: The raw data from the response body.
     /// - Throws: `Network.ResponseError.dataNotFound` if the response body data is not available
-    func bodyData() throws -> Data {
+    func bodyData() throws(ResponseError) -> Data {
         guard let data else { throw ResponseError.dataNotFound }
         return data
     }
@@ -73,9 +76,8 @@ public extension Cobweb.HTTP.Response {
     ///   - decoder: The JSON decoder to use for decoding the response body. Defaults to `JSONDecoder()`.
     /// - Returns: The decoded response body of the specified type.
     /// - Throws: `Network.ResponseError.dataNotFound` if the response body data is not available, or an error if the data cannot be decoded into the specified type.
-    func body<Body: Decodable>(_ decoder: JSONDecoder = JSONDecoder()) throws -> Body {
-        guard let data else { throw ResponseError.dataNotFound }
-        return try decoder.decode(Body.self, from: data)
+    func body<Body: Decodable>(_ decoder: JSONDecoder = JSONDecoder()) throws(ResponseError) -> Body {
+        try body(as: Body.self, decoder)
     }
     
     /// Decodes the response body into a specified type.
@@ -87,9 +89,16 @@ public extension Cobweb.HTTP.Response {
     ///   - decoder: The JSON decoder to use for decoding the response body. Defaults to `JSONDecoder()`.
     /// - Returns: The decoded response body of the specified type.
     /// - Throws: `Network.ResponseError.dataNotFound` if the response body data is not available, or an error if the data cannot be decoded into the specified type.
-    func body<Body: Decodable>(as type: Body.Type, _ decoder: JSONDecoder = JSONDecoder()) throws -> Body {
+    func body<Body: Decodable>(as type: Body.Type, _ decoder: JSONDecoder = JSONDecoder()) throws(ResponseError) -> Body {
         guard let data else { throw ResponseError.dataNotFound }
-        return try decoder.decode(Body.self, from: data)
+        
+        do {
+            return try decoder.decode(Body.self, from: data)
+        } catch let error as DecodingError {
+            throw ResponseError.decodingError(error)
+        } catch {
+            throw ResponseError.unexpected(error)
+        }
     }
     
     /// Converts the response body data into a string using the specified encoding.
@@ -100,7 +109,7 @@ public extension Cobweb.HTTP.Response {
     ///   - encoding: The string encoding to use. Defaults to `.utf8`.
     /// - Returns: The response body data as a string.
     /// - Throws: `Network.ResponseError.dataNotFound` if the response body data is not available, or `Network.ResponseError.couldntConvertDataToString` if the data cannot be converted into a string using the specified encoding.
-    func body(encoding: String.Encoding = .utf8) throws -> String {
+    func body(encoding: String.Encoding = .utf8) throws(ResponseError) -> String {
         guard let data else { throw ResponseError.dataNotFound }
         guard let string = String(data: data, encoding: encoding)
         else { throw ResponseError.couldntConvertData }
@@ -132,7 +141,7 @@ public extension Cobweb.HTTP.Response {
     ///   - code: The HTTP status code to verify against.
     /// - Throws: `ResponseError.invalidHTTPResponse` if the status code could not be accessed
     @discardableResult
-    func verifyStatusCode(is code: Int) throws -> Self? {
+    func verifyStatusCode(is code: Int) throws(ResponseError) -> Self? {
         if try statusCode != code { return nil }
         return self
     }
@@ -175,7 +184,7 @@ public extension Cobweb.HTTP.Response {
     ///   - range: The range HTTP status codes to verify against.
     /// - Throws: `ResponseError.invalidHTTPResponse` if the status code could not be accessed
     @discardableResult
-    func verifyStatusCode(isIn range: ClosedRange<Int>) throws -> Self? {
+    func verifyStatusCode(isIn range: ClosedRange<Int>) throws(ResponseError) -> Self? {
         let statusCode = try statusCode
         if range.lowerBound > statusCode || range.upperBound < statusCode { return nil }
         return self
@@ -221,7 +230,7 @@ public extension Cobweb.HTTP.Response {
     ///   - code: The HTTP status code to verify against.
     /// - Throws: `ResponseError.invalidHTTPResponse` if the status code could not be accessed
     @discardableResult
-    func verifyStatusCode(isNot code: Int) throws -> Self? {
+    func verifyStatusCode(isNot code: Int) throws(ResponseError) -> Self? {
         if try statusCode == code { return nil }
         return self
     }
@@ -264,7 +273,7 @@ public extension Cobweb.HTTP.Response {
     ///   - range: The range HTTP status codes to verify against.
     /// - Throws: `ResponseError.invalidHTTPResponse` if the status code could not be accessed
     @discardableResult
-    func verifyStatusCode(isNotIn range: ClosedRange<Int>) throws -> Self? {
+    func verifyStatusCode(isNotIn range: ClosedRange<Int>) throws(ResponseError) -> Self? {
         let statusCode = try statusCode
         if range.lowerBound < statusCode && range.upperBound > statusCode { return nil }
         return self

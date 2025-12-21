@@ -25,7 +25,8 @@ public extension Cobweb {
             if components.scheme == nil { components.scheme = Cobweb.HTTP.Scheme.https.rawValue }
         }
         
-        enum URLError: Error {
+        public enum URLError: Error {
+            case invalidBaseURL
             case couldntCreateURL
         }
         
@@ -50,6 +51,12 @@ public extension Cobweb.URL {
     /// - Returns: A new `Cobweb.URL` instance with the specified URL components.
     static func using(components: URLComponents) -> Self {
         return Self(comp: components)
+    }
+    
+    /// Creates a new `Cobweb.URL` instance using a Base URL.
+    static func using(baseURL: String) throws(URLError) -> Self {
+        guard let comp = URLComponents(string: baseURL) else { throw URLError.invalidBaseURL }
+        return Self(comp: comp)
     }
     
     /// Creates a new `Cobweb.URL` instance with the specified scheme.
@@ -188,7 +195,7 @@ public extension Cobweb.URL {
     /// - Parameter method: The HTTP method for the request.
     /// - Returns: A network request configured with the specified HTTP method and URL.
     /// - Throws: `Cobweb.URL.URLError.couldntCreateURL` if the URL cannot be created.
-    func request(method: Cobweb.HTTP.Method) throws -> Cobweb.HTTP.Request {
+    func request(method: Cobweb.HTTP.Method) throws(URLError) -> Cobweb.HTTP.Request {
         guard let url = self.components.url
         else { throw Cobweb.URL.URLError.couldntCreateURL }
         
@@ -201,7 +208,7 @@ public extension Cobweb.URL {
     ///
     /// - Returns: A GET request configured with the URL.
     /// - Throws: `Cobweb.URL.URLError.couldntCreateURL` if the URL cannot be created.
-    func get() throws -> Cobweb.HTTP.Request {
+    func get() throws(URLError) -> Cobweb.HTTP.Request {
         try self.request(method: .get)
     }
     
@@ -211,7 +218,7 @@ public extension Cobweb.URL {
     ///
     /// - Returns: A POST request configured with the URL.
     /// - Throws: `Cobweb.URL.URLError.couldntCreateURL` if the URL cannot be created.
-    func post() throws -> Cobweb.HTTP.Request {
+    func post() throws(URLError) -> Cobweb.HTTP.Request {
         try self.request(method: .post)
     }
     
@@ -221,7 +228,7 @@ public extension Cobweb.URL {
     ///
     /// - Returns: A PUT request configured with the URL.
     /// - Throws: `Cobweb.URL.URLError.couldntCreateURL` if the URL cannot be created.
-    func put() throws -> Cobweb.HTTP.Request {
+    func put() throws(URLError) -> Cobweb.HTTP.Request {
         try self.request(method: .put)
     }
     
@@ -231,7 +238,7 @@ public extension Cobweb.URL {
     ///
     /// - Returns: A DELETE request configured with the URL.
     /// - Throws: `Cobweb.URL.URLError.couldntCreateURL` if the URL cannot be created.
-    func delete() throws -> Cobweb.HTTP.Request {
+    func delete() throws(URLError) -> Cobweb.HTTP.Request {
         try self.request(method: .delete)
     }
 }
@@ -245,7 +252,7 @@ public extension Cobweb.URL {
     ///
     /// - Returns: A network request configured for the WebSocket connection.
     /// - Throws: `Cobweb.URL.URLError.couldntCreateURL` if the URL cannot be created.
-    func webSocket() throws -> Cobweb.WebSocket.Request {
+    func webSocket() throws(URLError) -> Cobweb.WebSocket.Request {
         guard let url = self.components.url
         else { throw Cobweb.URL.URLError.couldntCreateURL }
         
